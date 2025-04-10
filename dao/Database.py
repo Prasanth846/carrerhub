@@ -1,12 +1,15 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from typing import List
 from util.db_conn_util import DBConnUtil
-from entity.jobs import Jobs
-from entity.company import Company
-from entity.applicant import Applicant
-from entity.application import Application
+from Entity.entityjoblisting import Jobs
+from Entity.entitycompany import Company
+from Entity.entityapplicant import Applicant
+from Entity.entityapplication import Application
 from datetime import datetime
 
-# ✅ Correct exception imports
+
 from exception.DeadlineOverException import DeadlineOverException
 from exception.salary_negative_exception import SalaryNegativeException
 from exception.invalid_email_format import InvalidEmailFormat
@@ -81,7 +84,7 @@ class DatabaseManager:
             VALUES (%s, %s, %s, %s, %s, %s, NOW(), %s)
         """, (company_id, job_title, description, location, salary, job_type, deadline))
         self.conn.commit()
-        print("✅ Job posted successfully.")
+        print("Job posted successfully.")
 
     def insert_applicant(self, applicant: Applicant):
         try:
@@ -93,7 +96,7 @@ class DatabaseManager:
                   applicant.phone, applicant.resume, applicant.experience))
             self.conn.commit()
             applicant.applicant_id = self.cursor.lastrowid
-            print("✅ Applicant profile created.")
+            print("Applicant profile created.")
         except InvalidEmailFormat as e:
             raise e
 
@@ -110,34 +113,59 @@ class DatabaseManager:
         deadline_result = self.cursor.fetchone()
 
         if deadline_result and deadline_result[0] and datetime.now() > deadline_result[0]:
-            raise DeadlineOverException("❌ Application deadline is over.")
+            raise DeadlineOverException(" Application deadline is over.")
 
         self.cursor.execute("""
             INSERT INTO Applications (applicant_id, job_id, application_date, cover_letter)
             VALUES (%s, %s, %s, %s)
         """, (applicant_id, job_id, datetime.now(), cover_letter))
         self.conn.commit()
-        print("✅ Application submitted successfully.")
+        print(" Application submitted successfully.")
 
     def get_jobs(self) -> List[Jobs]:
-        self.cursor.execute("SELECT * FROM Jobs")
+        self.cursor.execute("SELECT job_id, jobtitle, job_description, job_location, salary, job_type, posted_date FROM Jobs")
         rows = self.cursor.fetchall()
-        return [Jobs(*row[1:], job_id=row[0]) for row in rows]
+        return [Jobs(*row) for row in rows]
+
+
+
+
 
     def get_companies(self) -> List[Company]:
-        self.cursor.execute("SELECT * FROM Companies")
+        self.cursor.execute("SELECT company_id, company_name, location FROM companies")
         rows = self.cursor.fetchall()
         return [Company(*row) for row in rows]
-
+                                                                
+       
     def get_applicants(self) -> List[Applicant]:
-        self.cursor.execute("SELECT * FROM Applicants")
+        self.cursor.execute("""
+        SELECT applicant_id, first_name, last_name, email, phone, resume, experience 
+        FROM applicants
+    """)
         rows = self.cursor.fetchall()
-        return [Applicant(*row[1:], applicant_id=row[0]) for row in rows]
+        return [
+        Applicant(
+            applicant_id=row[0],
+            first_name=row[1],
+            last_name=row[2],
+            email=row[3],
+            phone=row[4],
+            resume=row[5],
+            experience=row[6]
+        ) for row in rows
+    ]
+
 
     def get_applications_for_job(self, job_id: int) -> List[Application]:
-        self.cursor.execute("SELECT * FROM Applications WHERE job_id = %s", (job_id,))
+        self.cursor.execute("SELECT * FROM applications WHERE job_id = %s", (job_id,))
         rows = self.cursor.fetchall()
-        return [Application(*row[1:], application_id=row[0]) for row in rows]
+        return [ Application(
+            application_id=row[0],
+            job_id=row[1],
+            applicant_id=row[2],
+            application_date=row[3],
+            cover_letter=row[4]
+            ) for row in rows ]
 
     def get_jobs_by_salary_range(self, min_salary, max_salary):
         self.cursor.execute("""
@@ -161,7 +189,7 @@ class DatabaseManager:
 
         for job_id, salary in rows:
             if salary is None or salary < 0:
-                raise SalaryNegativeException(f"❌ Invalid salary for job ID {job_id}")
+                raise SalaryNegativeException(f" Invalid salary for job ID {job_id}")
             total_salary += salary
             count += 1
 

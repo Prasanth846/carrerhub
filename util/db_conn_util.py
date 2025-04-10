@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import mysql.connector
 from exception.database_conn_exception import DatabaseConnException
 from util.db_property_util import DBPropertyUtil

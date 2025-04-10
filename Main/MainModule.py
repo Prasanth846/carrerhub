@@ -1,98 +1,141 @@
-from dao.database_manager import DatabaseManager
-from entity.company import Company
-from entity.applicant import Applicant
-from entity.jobs import Jobs
-from entity.application import Application
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from dao.Database import DatabaseManager
+from Entity.entitycompany import Company
+from Entity.entityapplicant import Applicant
+from Entity.entityjoblisting import Jobs
+from Entity.entityapplication import Application
 
 from exception.invalid_email_format import InvalidEmailFormat
 from exception.salary_negative_exception import SalaryNegativeException
 from exception.DeadlineOverException import DeadlineOverException
-
+from datetime import datetime
 from datetime import datetime
 
-db = DatabaseManager()
+def main():
+    db = DatabaseManager()
+    db.initialize_database()
+    
 
-def main_menu():
+
     while True:
-        print("\n📋 CareerHub Main Menu")
-        print("1. Add Company")
-        print("2. Add Applicant")
-        print("3. Post a Job")
-        print("4. Apply for a Job")
-        print("5. View All Jobs")
-        print("6. View Average Salary")
-        print("7. Exit")
+        print("""
+-------- Job Portal Menu --------
+1. Register Company
+2. Post a Job
+3. Register Applicant
+4. Apply for Job
+5. View All Jobs
+6. View All Companies
+7. View All Applicants
+8. View Applications for a Job
+9. Search Jobs by Salary Range
+10. Calculate Average Salary
+11. Exit
+        """)
 
-        choice = input("Choose an option: ")
+        choice = input("Enter your choice (1-11): ")
 
-        if choice == '1':
-            name = input("Company Name: ")
-            location = input("Location: ")
-            company = Company(company_name=name, location=location)
-            db.insert_company(company)
+        try:
+            if choice == "1":
+                name = input("Enter company name: ")
+                location = input("Enter company location: ")
+                company = Company(company_name=name, location=location)
+                db.insert_company(company)
+                print(f"Company {name} registered successfully.")
 
-        elif choice == '2':
-            try:
-                first = input("First Name: ")
-                last = input("Last Name: ")
-                email = input("Email: ")
-                phone = input("Phone: ")
-                resume = input("Resume Text: ")
-                experience = int(input("Years of Experience: "))
-                applicant = Applicant(first_name=first, last_name=last, email=email, phone=phone, resume=resume, experience=experience)
-                db.insert_applicant(applicant)
-            except InvalidEmailFormat as e:
-                print("❌", e)
-            except Exception as e:
-                print("❌ Something went wrong:", e)
-
-        elif choice == '3':
-            try:
-                company_id = int(input("Company ID: "))
-                title = input("Job Title: ")
-                description = input("Description: ")
-                location = input("Job Location: ")
-                salary = float(input("Salary: "))
-                job_type = input("Job Type (full time / part time / contract): ")
-                deadline_str = input("Application Deadline (YYYY-MM-DD): ")
-                deadline = datetime.strptime(deadline_str, "%Y-%m-%d")
+            elif choice == "2":
+                company_id = int(input("Enter company ID: "))
+                title = input("Enter job title: ")
+                description = input("Enter job description: ")
+                location = input("Enter job location: ")
+                salary = float(input("Enter job salary: "))
+                job_type = input("Enter job type (full time,part time,contract): ")
+                deadline = input("Enter application deadline (YYYY-MM-DD HH:MM:SS): ")
+                deadline = datetime.strptime(deadline, "%Y-%m-%d %H:%M:%S")
                 db.insert_job(company_id, title, description, location, salary, job_type, deadline)
-            except SalaryNegativeException as e:
-                print("❌", e)
-            except Exception as e:
-                print("❌ Error:", e)
 
-        elif choice == '4':
-            try:
-                applicant_id = int(input("Applicant ID: "))
-                job_id = int(input("Job ID: "))
-                cover_letter = input("Cover Letter: ")
-                db.insert_job_application(applicant_id, job_id, cover_letter)
-            except DeadlineOverException as e:
-                print("❌", e)
-            except Exception as e:
-                print("❌ Error:", e)
+            elif choice == "3":
+                first_name = input("Enter first name: ")
+                last_name = input("Enter last name: ")
+                email = input("Enter email: ")
+                phone = input("Enter phone number: ")
+                resume = input("Enter resume details: ")
+                experience = int(input("Enter years of experience: "))
+                applicant = Applicant(first_name=first_name, last_name=last_name, email=email, phone=phone, resume=resume, experience=experience)
+                db.insert_applicant(applicant)
+              
 
-        elif choice == '5':
-            print("\n📄 Job Listings:")
-            jobs = db.get_jobs()
-            for job in jobs:
-                print(f"{job.job_id} | {job.job_title} | {job.job_location} | ₹{job.salary}")
+            elif choice == "4":
+                applicant_id = int(input("Enter applicant ID: "))
+                job_id = int(input("Enter job ID to apply for: "))
+                cover = input("Enter cover letter: ")
+                db.insert_job_application(applicant_id, job_id, cover)
 
-        elif choice == '6':
-            try:
+            elif choice == "5":
+                print("\n📄 Job Listings:")
+                jobs = db.get_jobs()
+                if not jobs:
+                    print("No jobs available.")
+                else:   
+                    for job in jobs:
+                       print(f"{job.job_id} | {job.job_title} | {job.job_location} | ₹{job.salary} | {job.job_type}")
+
+            
+
+            elif choice == "6":
+                print("\n🏢 Companies:")
+                companies = db.get_companies()
+                if not companies:
+                   print("No companies registered.")
+                else:
+                 for company in companies:
+                   print(company)
+
+
+            elif choice == "7":
+                applicants = db.get_applicants()
+                for app in applicants:
+                    print(app)
+
+            elif choice == "8":
+                job_id = int(input("Enter job ID: "))
+                applications = db.get_applications_for_job(job_id)
+                for app in applications:
+                    print(f"Application ID: {app.application_id}, Applicant ID: {app.applicant_id}, Date: {app.application_date}, Cover: {app.cover_letter[:30]}...")
+
+            elif choice == "9":
+                min_sal = float(input("Enter minimum salary: "))
+                max_sal = float(input("Enter maximum salary: "))
+                results = db.get_jobs_by_salary_range(min_sal, max_sal)
+                for title, company, salary in results:
+                    print(f"{title} at {company} - ₹{salary}")
+
+            elif choice == "10":
                 avg = db.calculate_average_salary()
-                print(f"📊 Average Salary: ₹{avg:.2f}")
-            except SalaryNegativeException as e:
-                print("❌", e)
+                print(f"Average Salary: ₹{avg:.2f}")
 
-        elif choice == '7':
-            db.close()
-            print(" Exiting... Goodbye!")
-            break
+            elif choice == "11":
+                print("Exiting Job Portal. Goodbye!")
+                db.close()
+                break
 
-        else:
-            print("❌ Invalid choice. Try again.")
+            else:
+                print("Invalid choice. Please enter a number from 1 to 11.")
+
+        except InvalidEmailFormat as e:
+            print(f"Email Error: {e}")
+        except SalaryNegativeException as e:
+            print(f"Salary Error: Negative salary found for job ID {e.job_id}.")
+        except DeadlineOverException as e:
+            print(f"Deadline Error: Application deadline has passed for job ID {e.job_id}.")
+        except ValueError as e:
+            print("Input error. Please enter data in the correct format.")
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+
 
 if __name__ == "__main__":
-    main_menu()
+    main()
